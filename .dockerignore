@@ -1,0 +1,41 @@
+# Git history — not needed in the image
+.git
+.gitignore
+
+# Python byte-code and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments — dependencies come from requirements.txt, not a local venv
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files — secrets must be injected at runtime, never baked into the image
+.env
+.env.*
+
+# IDE and editor artefacts
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Test artefacts — not needed to run the application
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation — keeps the image minimal
+README.md
+
+# The Dockerfile itself and this file
+Dockerfile
+.dockerignore
