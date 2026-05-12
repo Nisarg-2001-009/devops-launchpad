@@ -12,8 +12,10 @@ RUN groupadd --gid 1001 appgroup && \
 # unless requirements.txt changes, even if application code changes
 COPY requirements.txt .
 
-# Upgrade wheel to 0.46.2 to patch CVE-2026-24049 before installing app deps
-RUN pip install --no-cache-dir "wheel==0.46.2" && \
+# Upgrade setuptools and wheel before installing app deps:
+#   setuptools 82.0.1 — bundles patched jaraco.context 6.1.0 and wheel 0.46.2
+#   wheel 0.46.2      — standalone patch for CVE-2026-24049
+RUN pip install --no-cache-dir "setuptools==82.0.1" "wheel==0.46.2" && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application source code after dependencies are installed
