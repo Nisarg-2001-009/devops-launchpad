@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-launchpad
+  labels:
+    app: devops-launchpad
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devops-launchpad
+  template:
+    metadata:
+      labels:
+        app: devops-launchpad
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+      containers:
+        - name: devops-launchpad
+          image: devops-launchpad:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: FLASK_ENV
+              value: production
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
