@@ -12,8 +12,9 @@ RUN groupadd --gid 1001 appgroup && \
 # unless requirements.txt changes, even if application code changes
 COPY requirements.txt .
 
-# Install dependencies; --no-cache-dir keeps the image lean by skipping pip's cache
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade wheel to 0.46.2 to patch CVE-2026-24049 before installing app deps
+RUN pip install --no-cache-dir "wheel==0.46.2" && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application source code after dependencies are installed
 # so that code edits don't invalidate the expensive pip layer above
