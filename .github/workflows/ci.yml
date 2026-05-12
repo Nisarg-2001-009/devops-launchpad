@@ -1,0 +1,115 @@
+name: CI
+
+# Trigger on every push to main and on pull requests targeting main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── Stage 1: Lint ────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Restore cached pip packages to speed up subsequent runs
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install flake8
+        run: pip install flake8==7.1.1
+
+      # E501 violations (line length) are governed by setup.cfg max-line-length
+      - name: Run flake8
+        run: flake8 app.py tests/
+
+  # ── Stage 2: Test ────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      # Install both runtime and dev dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest --tb=short -v
+
+  # ── Stage 3: Build ───────────────────────────────────────────────────────────
+  build:
+    name: Build
+    # Only run after lint and test both pass
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tag the image with the commit SHA for traceability
+      - name: Build Docker image
+        run: docker build -t devops-launchpad:${{ github.sha }} .
+
+      # Persist the image as a tar so the security job can load it without rebuilding
+      - name: Save Docker image to tar
+        run: docker save devops-launchpad:${{ github.sha }} -o image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
+          retention-days: 1  # CI artifact only; no long-term storage needed
+
+  # ── Stage 4: Security Scan ───────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      # Retrieve the image tar built in the previous job
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load -i image.tar
+
+      # Trivy scans the image layers for OS and library CVEs.
+      # exit-code: '1'   → fail the job if vulnerabilities are found
+      # ignore-unfixed   → skip CVEs with no fix yet (reduces noise)
+      # severity         → only fail on CRITICAL or HIGH findings
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: devops-launchpad:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
