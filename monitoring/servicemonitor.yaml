@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: devops-launchpad
+  namespace: monitoring
+  labels:
+    app: devops-launchpad
+spec:
+  # Pull the "app" label value from the matched Service to use as the Prometheus job label.
+  jobLabel: app
+  selector:
+    matchLabels:
+      app: devops-launchpad
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

@@ -53,6 +53,14 @@ class TestInfoRoute:
         assert "python_path" in data
 
 
+class TestMetricsRoute:
+    def test_status_code(self, client):
+        assert client.get("/metrics").status_code == 200
+
+    def test_contains_flask_metrics(self, client):
+        assert b"flask_http_request" in client.get("/metrics").data
+
+
 class TestNotFound:
     def test_unknown_route_returns_404(self, client):
         assert client.get("/does-not-exist").status_code == 404
